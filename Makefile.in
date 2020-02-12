@@ -1,0 +1,10 @@
+MODULE    = sicl32.dll
+IMPORTLIB = sicl32
+EXTRALIBS = $(GPIB_LIBS)
+EXTRAINCL = $(GPIB_CFLAGS)
+
+C_SRCS = \
+	sicl32.c
+
+RC_SRCS = \
+	sicl32.rc
