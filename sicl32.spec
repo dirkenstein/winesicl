@@ -93,8 +93,8 @@
 @ stub ilpopfifo
 @ stdcall ionerror(ptr)
 @ stub igetonerror
-@ stub I_ERROR_EXIT
-@ stub I_ERROR_NO_EXIT
+@ stdcall I_ERROR_EXIT(long long)
+@ stdcall I_ERROR_NO_EXIT(long long)
 @ stub igeterrno
 @ stub igeterrstr
 @ stub icauseerr
