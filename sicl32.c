@@ -78,7 +78,6 @@ static int critsec()
                 return TRUE; 
 
             // The thread got ownership of an abandoned mutex
-            // The database is in an indeterminate state
             case WAIT_ABANDONED: 
                 return FALSE; 
         }
@@ -295,7 +294,7 @@ int SICLAPI iread (
    unsigned long _far *actual
 ){
   int retval = 0;
-  int rsn, act, blen;
+  int rsn, act, n, blen;
   char bufc [8192];
   char *ptr, *rem, *rslp;
   int crit = critsec();
@@ -307,7 +306,7 @@ int SICLAPI iread (
      return -1;
   }
   wrbuf(NULL, 0, "iread %d,%d\n", id,bufsize);
-  act = rdbuf(bufc, 8192);
+  n = rdbuf(bufc, 8192);
   ptr = bufc;
   rem = bufc;
   while (*ptr != ',' && *ptr != '\n') ptr++;
@@ -327,10 +326,14 @@ int SICLAPI iread (
   blen = atoi(rem);
   rslp = rem;
   rem = ptr+1;  
+  int pref = rem - bufc;
+  while ( (n -pref) < blen ) {
+     TRACE("underrun %d %d %d\n", act, pref, blen);
+     n += rdbuf(bufc + n, 8192-n); 
+  }
   memcpy (buf, rem, blen);
-  TRACE("retval %d rsn %d act %d rem blen  %s %d\n", retval, rsn, act, rslp, blen);
-  if (blen == 1) TRACE ("byval = %d\n", (int) *buf); 
-  if (blen == 0) WARN("zero blen retval %d rsn %d act %d rem blen %s\n", retval, rsn, act, rslp);
+  TRACE("retval %d rsn %d act %d rem blen [%s] %d\n", retval, rsn, act, rslp, blen);
+  if (blen == 0) WARN("zero blen retval %d rsn %d act %d rem blen [%s]\n", retval, rsn, act, rslp);
   if (actual) *actual = act;
   if (reason) *reason = rsn;
   end_critsec(crit);
