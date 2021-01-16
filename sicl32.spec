@@ -16,9 +16,9 @@
 @ stub isetbuf
 @ stdcall iwrite(long ptr long long ptr)
 @ stdcall iread(long ptr long long ptr)
-@ stub itermchr
+@ stdcall itermchr(long long)
 @ stub igettermchr
-@ stub ionsrq
+@ stdcall ionsrq(long ptr)
 @ stub igetonsrq
 @ stub ionintr
 @ stub igetonintr
@@ -95,7 +95,7 @@
 @ stub igetonerror
 @ stdcall I_ERROR_EXIT(long long)
 @ stdcall I_ERROR_NO_EXIT(long long)
-@ stub igeterrno
+@ stdcall igeterrno()
 @ stub igeterrstr
 @ stub icauseerr
 @ stub igpiostat

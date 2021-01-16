@@ -28,6 +28,7 @@ WINE_DEFAULT_DEBUG_CHANNEL(sicl);
 static int sfifofd = -1;
 static int cfifofd = -1;
 static errorproc_t errfunc = NULL;
+static srqhandler_t srqfunc = NULL;
 static int fifo = 1;
 
 static HANDLE ghExcl = NULL;
@@ -193,6 +194,12 @@ int rdbuf(char * buf, int l)
   int n;
   n=read (cfifofd, buf, l);
   TRACE("read %d\n", n);
+  if (n >= 4) {
+    if (memcmp("SRQ\n", buf, 4)) {
+       WARN("SRQ received\n");
+       memmove(buf, buf+4, n-4);
+    }
+  }
   if (n <= 0) {
      close(cfifofd);
      cfifofd = -1;
@@ -256,6 +263,23 @@ INST SICLAPI igetintfsess(INST id){
   if (retval < 0 && errfunc) errfunc(id, retval);
   return retval;
 }
+
+int SICLAPI igeterrno(void){
+  int retval = 0;
+  char buf [255];
+  int crit = critsec();
+  TRACE("\n");
+  if(setfifos() != 0) {
+     end_critsec(crit);
+     return I_ERR_NOCONN;
+  }
+  wrbuf(NULL, 0, "igeterrno\n");
+  rdbuf(buf, 255);
+  retval = atoi(buf);
+  end_critsec(crit);
+  return retval;
+}
+
 
 int SICLAPI iwrite (
    INST id,
@@ -363,8 +387,10 @@ int SICLAPI ireadstb(INST id,unsigned char _far *stb){
   if (stb) *stb  = rsl;
   end_critsec(crit);
   if (retval < 0 && errfunc) errfunc(id, retval);
+  if ((rsl & (1<<6)) && srqfunc) srqfunc(id);
   return retval;
 }
+
 int SICLAPI itimeout(INST id,long tval){
   int retval = 0;
   char buf [255];
@@ -381,6 +407,24 @@ int SICLAPI itimeout(INST id,long tval){
   if (retval < 0) errfunc(id, retval);
   return retval;
 }
+
+int SICLAPI itermchr(INST id,int tchr){
+  int retval = 0;
+  char buf [255];
+  int crit = critsec();
+  TRACE(" id %d \n", id);
+  if(setfifos() != 0) {
+     end_critsec(crit);
+     return -1;
+  }
+  wrbuf(NULL, 0, "itermchr %d,%d\n", id, tchr);
+  rdbuf(buf, 255);
+  retval = atoi(buf);
+  end_critsec(crit);
+  if (retval < 0) errfunc(id, retval);
+  return retval;
+}
+
 int SICLAPI iclear(INST id){
   int retval = 0;
   char buf [255];
@@ -488,6 +532,14 @@ int SICLAPI ionerror(errorproc_t errcall){
   errfunc = errcall;
   return 0;
 }
+
+int SICLAPI ionsrq(INST id,srqhandler_t shdlr) {
+  TRACE(" srqproc %p \n", shdlr);
+  srqfunc = shdlr;
+  return 0;
+
+}
+
  /* process cleanup for Win 3.1*/
 int SICLAPI  _siclcleanup(void) {
   if (sfifofd >= 0)
